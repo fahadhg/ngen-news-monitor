@@ -76,3 +76,14 @@ export interface NewsArticleRow {
   sentiment: { positive: number; negative: number; neutral: number } | null;
   created_at: string;
 }
+
+/**
+ * The subset of NewsArticleRow actually rendered on the public feed. Passed
+ * to ArticleCard (a Client Component) instead of the full row so
+ * relevance_score and sentiment — internal scoring signals — never end up in
+ * the page's hydration payload, even though nothing renders them.
+ */
+export type ArticleCardData = Pick<
+  NewsArticleRow,
+  "id" | "vertical" | "title" | "url" | "source" | "published_at" | "summary" | "image_url" | "canada_tier"
+>;

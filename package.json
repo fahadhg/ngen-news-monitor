@@ -14,11 +14,13 @@
     "fetch:all": "npm run fetch:additive && npm run fetch:robotics && npm run fetch:materials && npm run fetch:defence && npm run fetch:semiconductors"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
     "@supabase/supabase-js": "^2.105.3",
     "clsx": "^2.1.1",
     "next": "^15.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^4.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

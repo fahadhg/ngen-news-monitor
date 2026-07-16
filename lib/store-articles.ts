@@ -2,23 +2,27 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { NewsCluster, PerigonArticle } from "./types";
 import { computeCanadaTier } from "./relevance-tier";
 
+export interface ScoredArticle {
+  article: PerigonArticle;
+  /** Claude Haiku's relevance score (1-10) — pass through selectWinners() first. */
+  relevanceScore: number | null;
+}
+
 /**
- * Upserts raw Perigon results into news_articles for inspection.
- * relevance_score and summary are left as Perigon's own values for now —
- * there's no Claude Haiku relevance/summary pass yet, so nothing here has
- * been vetted against the vertical description. Treat every row as
- * unfiltered until that step exists.
+ * Upserts already-scored, already-deduped articles into news_articles.
+ * Callers are expected to have run these through enrichArticles() +
+ * selectWinners() first — this function trusts relevanceScore as final.
  */
 export async function storeArticles(
   supabase: SupabaseClient,
   cluster: NewsCluster,
-  articles: PerigonArticle[]
+  scored: ScoredArticle[]
 ): Promise<{ stored: number; error?: string }> {
-  if (articles.length === 0) {
+  if (scored.length === 0) {
     return { stored: 0 };
   }
 
-  const rows = articles.map((article) => ({
+  const rows = scored.map(({ article, relevanceScore }) => ({
     vertical: cluster.id,
     title: article.title,
     url: article.url,
@@ -27,7 +31,7 @@ export async function storeArticles(
     summary: article.summary ?? article.description ?? null,
     image_url: article.imageUrl ?? null,
     canada_tier: computeCanadaTier(article),
-    relevance_score: null,
+    relevance_score: relevanceScore,
     sentiment: article.sentiment ?? null,
     raw_perigon_json: article,
   }));

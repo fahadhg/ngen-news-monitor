@@ -1,7 +1,7 @@
 "use client";
 
-import type { NewsArticleRow } from "@/lib/types";
-import SentimentBadge from "./SentimentBadge";
+import { useState } from "react";
+import type { ArticleCardData } from "@/lib/types";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
@@ -16,13 +16,27 @@ const VERTICAL_LABELS: Record<string, string> = {
   "semiconductors-electronics": "Semiconductors & Electronics",
 };
 
+// No external stock-photo source wired up, so verticals without a Perigon
+// image get an on-brand placeholder instead of a blank/broken block —
+// distinct color per vertical so the feed stays visually scannable.
+const FALLBACK_STYLES: Record<string, string> = {
+  "additive-manufacturing": "bg-ngen-indigo",
+  "robotics-automation": "bg-ngen-copper",
+  "advanced-materials": "bg-[#0D9488]",
+  "defence-manufacturing": "bg-[#3A3A3A]",
+  "semiconductors-electronics": "bg-[#5B4B8A]",
+};
+
 export default function ArticleCard({
   article,
   showVerticalBadge,
 }: {
-  article: NewsArticleRow;
+  article: ArticleCardData;
   showVerticalBadge?: boolean;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = article.image_url && !imageFailed;
+
   return (
     <a
       href={article.url}
@@ -30,21 +44,28 @@ export default function ArticleCard({
       rel="noopener noreferrer"
       className="block bg-surface-1 border border-border rounded-xl p-4 shadow-card hover:border-ngen-copper/40 transition-colors"
     >
-      {article.image_url && (
-        <div className="-mx-4 -mt-4 mb-3 aspect-[16/9] overflow-hidden rounded-t-xl bg-surface-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="-mx-4 -mt-4 mb-3 aspect-[16/9] overflow-hidden rounded-t-xl bg-surface-2">
+        {showImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={article.image_url}
+            src={article.image_url!}
             alt=""
             loading="lazy"
             className="w-full h-full object-cover"
-            onError={(e) => {
-              const wrapper = e.currentTarget.parentElement;
-              if (wrapper) wrapper.style.display = "none";
-            }}
+            onError={() => setImageFailed(true)}
           />
-        </div>
-      )}
+        ) : (
+          <div
+            className={`w-full h-full flex items-center justify-center px-4 ${
+              FALLBACK_STYLES[article.vertical] ?? "bg-ngen-indigo"
+            }`}
+          >
+            <span className="text-white/90 font-semibold text-sm text-center tracking-tight">
+              {VERTICAL_LABELS[article.vertical] ?? "NGen Manufacturing News"}
+            </span>
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center gap-2 text-xs text-ink-faint mb-2">
         {showVerticalBadge && (
@@ -66,19 +87,13 @@ export default function ArticleCard({
         <p className="text-sm text-ink-muted leading-relaxed line-clamp-3">{article.summary}</p>
       )}
 
-      <div className="mt-3 flex items-center gap-1.5">
-        <SentimentBadge sentiment={article.sentiment} />
-        {article.canada_tier === 2 && (
+      {(article.canada_tier === 2 || article.canada_tier === 3) && (
+        <div className="mt-3">
           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-ink-muted">
-            Canada mention
+            {article.canada_tier === 2 ? "Canada mention" : "Allied coverage"}
           </span>
-        )}
-        {article.canada_tier === 3 && (
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-ink-muted">
-            Allied coverage
-          </span>
-        )}
-      </div>
+        </div>
+      )}
     </a>
   );
 }
