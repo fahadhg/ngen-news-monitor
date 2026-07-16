@@ -9,7 +9,9 @@ export async function getArticles(options: {
 
   let query = supabase
     .from("news_articles")
-    .select("id, vertical, title, url, source, published_at, summary, relevance_score, sentiment, created_at")
+    .select(
+      "id, vertical, title, url, source, published_at, summary, image_url, relevance_score, sentiment, created_at"
+    )
     .order("published_at", { ascending: false, nullsFirst: false })
     .limit(options.limit ?? 60);
 

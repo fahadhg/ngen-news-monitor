@@ -1,3 +1,5 @@
+"use client";
+
 import type { NewsArticleRow } from "@/lib/types";
 import SentimentBadge from "./SentimentBadge";
 
@@ -28,6 +30,22 @@ export default function ArticleCard({
       rel="noopener noreferrer"
       className="block bg-surface-1 border border-border rounded-xl p-4 shadow-card hover:border-ngen-copper/40 transition-colors"
     >
+      {article.image_url && (
+        <div className="-mx-4 -mt-4 mb-3 aspect-[16/9] overflow-hidden rounded-t-xl bg-surface-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={article.image_url}
+            alt=""
+            loading="lazy"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const wrapper = e.currentTarget.parentElement;
+              if (wrapper) wrapper.style.display = "none";
+            }}
+          />
+        </div>
+      )}
+
       <div className="flex items-center gap-2 text-xs text-ink-faint mb-2">
         {showVerticalBadge && (
           <>

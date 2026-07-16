@@ -24,6 +24,7 @@ export async function storeArticles(
     source: article.source?.domain ?? null,
     published_at: article.pubDate ?? null,
     summary: article.summary ?? article.description ?? null,
+    image_url: article.imageUrl ?? null,
     relevance_score: null,
     sentiment: article.sentiment ?? null,
     raw_perigon_json: article,

@@ -33,6 +33,7 @@ export interface PerigonArticle {
   description: string | null;
   summary?: string | null;
   content?: string | null;
+  imageUrl?: string | null;
   source: {
     domain: string;
     location?: { country?: string; state?: string; city?: string } | null;
@@ -68,6 +69,7 @@ export interface NewsArticleRow {
   source: string | null;
   published_at: string | null;
   summary: string | null;
+  image_url: string | null;
   relevance_score: number | null;
   sentiment: { positive: number; negative: number; neutral: number } | null;
   created_at: string;
