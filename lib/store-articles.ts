@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { NewsCluster, PerigonArticle } from "./types";
+import { computeCanadaTier } from "./relevance-tier";
 
 /**
  * Upserts raw Perigon results into news_articles for inspection.
@@ -25,6 +26,7 @@ export async function storeArticles(
     published_at: article.pubDate ?? null,
     summary: article.summary ?? article.description ?? null,
     image_url: article.imageUrl ?? null,
+    canada_tier: computeCanadaTier(article),
     relevance_score: null,
     sentiment: article.sentiment ?? null,
     raw_perigon_json: article,

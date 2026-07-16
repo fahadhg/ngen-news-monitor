@@ -70,6 +70,8 @@ export interface NewsArticleRow {
   published_at: string | null;
   summary: string | null;
   image_url: string | null;
+  /** 1 = Canada-primary, 2 = Canada-mentioned, 3 = allied-country-only. See lib/relevance-tier.ts. */
+  canada_tier: number | null;
   relevance_score: number | null;
   sentiment: { positive: number; negative: number; neutral: number } | null;
   created_at: string;

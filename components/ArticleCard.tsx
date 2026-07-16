@@ -66,8 +66,18 @@ export default function ArticleCard({
         <p className="text-sm text-ink-muted leading-relaxed line-clamp-3">{article.summary}</p>
       )}
 
-      <div className="mt-3">
+      <div className="mt-3 flex items-center gap-1.5">
         <SentimentBadge sentiment={article.sentiment} />
+        {article.canada_tier === 2 && (
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-ink-muted">
+            Canada mention
+          </span>
+        )}
+        {article.canada_tier === 3 && (
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-ink-muted">
+            Allied coverage
+          </span>
+        )}
       </div>
     </a>
   );

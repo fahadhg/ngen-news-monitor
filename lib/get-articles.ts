@@ -10,8 +10,11 @@ export async function getArticles(options: {
   let query = supabase
     .from("news_articles")
     .select(
-      "id, vertical, title, url, source, published_at, summary, image_url, relevance_score, sentiment, created_at"
+      "id, vertical, title, url, source, published_at, summary, image_url, canada_tier, relevance_score, sentiment, created_at"
     )
+    // Canada-primary stories first, then Canada-mentioned, then allied-only —
+    // recency breaks ties within each tier. See lib/relevance-tier.ts.
+    .order("canada_tier", { ascending: true, nullsFirst: false })
     .order("published_at", { ascending: false, nullsFirst: false })
     .limit(options.limit ?? 60);
 

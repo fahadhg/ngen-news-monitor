@@ -20,7 +20,13 @@ const PERIGON_BASE_URL = "https://api.goperigon.com/v1/all";
  */
 
 export interface FetchClusterOptions {
-  /** ISO datetime lower bound. Defaults to 26 hours ago (small overlap buffer for a daily pull). */
+  /**
+   * ISO datetime lower bound. Defaults to 72 hours ago — widened from an
+   * original 26-hour window because Canada-tight niches (Additive
+   * Manufacturing, Robotics) were returning single-digit results per day
+   * once reprints were deduplicated; this is "recent" rather than strictly
+   * "today" as a deliberate volume/freshness tradeoff.
+   */
   from?: string;
   /** ISO datetime upper bound. Defaults to now. */
   to?: string;
@@ -28,7 +34,7 @@ export interface FetchClusterOptions {
 }
 
 function defaultFromIso(): string {
-  return new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString();
+  return new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 }
 
 export async function fetchArticlesForCluster(
