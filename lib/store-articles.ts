@@ -31,7 +31,7 @@ export async function storeArticles(
 
   const { error } = await supabase
     .from("news_articles")
-    .upsert(rows, { onConflict: "url", ignoreDuplicates: false });
+    .upsert(rows, { onConflict: "url,vertical", ignoreDuplicates: false });
 
   if (error) {
     return { stored: 0, error: error.message };
