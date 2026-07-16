@@ -56,6 +56,12 @@ export async function fetchArticlesForCluster(
     // both label values were observed on keyword-stuffed forecast spam that
     // otherwise ranks artificially high (see README "Findings from live runs").
     excludeLabel: "Roundup,Non-news",
+    // Collapses wire-service syndication (one CP/Postmedia story running
+    // near-identically on a dozen regional-paper domains) down to one
+    // canonical copy per reprintGroupId — otherwise a single story can fill
+    // half a vertical's results with duplicates under different URLs, which
+    // URL-based dedup alone doesn't catch.
+    showReprints: "false",
   };
 
   const url = new URL(PERIGON_BASE_URL);
