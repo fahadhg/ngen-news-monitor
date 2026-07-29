@@ -11,7 +11,8 @@
     "fetch:materials": "tsx --env-file=.env.local scripts/fetch-advanced-materials.ts",
     "fetch:defence": "tsx --env-file=.env.local scripts/fetch-defence-manufacturing.ts",
     "fetch:semiconductors": "tsx --env-file=.env.local scripts/fetch-semiconductors-electronics.ts",
-    "fetch:all": "npm run fetch:additive && npm run fetch:robotics && npm run fetch:materials && npm run fetch:defence && npm run fetch:semiconductors"
+    "fetch:all": "npm run fetch:additive && npm run fetch:robotics && npm run fetch:materials && npm run fetch:defence && npm run fetch:semiconductors",
+    "refresh": "tsx --env-file=.env.local scripts/daily-refresh.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",

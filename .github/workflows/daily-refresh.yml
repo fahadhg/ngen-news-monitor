@@ -1,0 +1,29 @@
+name: Daily news refresh
+
+on:
+  # 11:00 UTC ≈ 6-7am Eastern depending on DST — before the workday starts.
+  # Adjust the cron expression in GitHub's UI or here if a different time is wanted.
+  schedule:
+    - cron: "0 11 * * *"
+  # Lets anyone with write access trigger a refresh on demand from the
+  # Actions tab, without waiting for the schedule.
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npx tsx scripts/daily-refresh.ts
+        env:
+          PERIGON_API_KEY: ${{ secrets.PERIGON_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

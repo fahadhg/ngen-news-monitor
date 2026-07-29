@@ -1,28 +1,77 @@
-# NGen Manufacturing News Monitor (POC)
+# NGen Manufacturing News Monitor
 
-Daily news monitoring across 5 manufacturing verticals, scored/summarized via
-Claude Haiku, stored in Supabase, served as a JSON feed for a HubSpot
-"Newsroom" module. Built on Perigon's free tier (150 requests/month) — one
-pull per vertical per day, no slack.
+Daily-refreshed feed of Canada-relevant manufacturing news across 5 verticals.
+Perigon supplies raw articles, Claude Haiku scores relevance and collapses
+cross-outlet duplicates of the same event, Supabase stores the winners, and a
+Next.js app on Railway serves them — as a page to iframe or a JSON API for a
+native HubSpot module.
+
+**Live:** `ngen-news-monitor-production.up.railway.app` · Repo: `github.com/fahadhg/ngen-news-monitor` (private)
 
 ## Status
 
-- [x] Folder structure
-- [x] 5 cluster configs (draft — see "Needs your review" below)
-- [x] Perigon fetch function + query builder, live for **Additive
-      Manufacturing** and **Robotics & Automation**
-- [x] Supabase schema migration (`news_articles` + `perigon_request_log`)
-- [x] Storage — fetched articles are upserted into `news_articles` (dedup by
-      `url unique`); near-duplicate-title dedup isn't written
-- [x] Next.js UI (`app/page.tsx`) + JSON API route (`app/api/articles`)
-- [x] Railway deploy config + HubSpot iframe embedding (CSP frame-ancestors)
-- [ ] Claude Haiku relevance/summary enrichment — not built yet. Every row in
-      `news_articles` has `relevance_score: null` right now — nothing has
-      been filtered for quality, the UI shows a "preview build" banner
-      because of this.
-- [ ] Fetch functions for the other 3 verticals (Advanced Materials, Defence
-      Manufacturing, Semiconductors & Electronics)
-- [ ] GitHub Actions cron
+- [x] All 5 verticals live: Additive Manufacturing, Robotics & Automation,
+      Advanced Materials, Defence Manufacturing, Semiconductors & Electronics
+- [x] Canada + allied-country geo scope (content clause, not a hard source-
+      country filter — see "How the pipeline works")
+- [x] Wire-syndication collapse (`showReprints=false`)
+- [x] Claude Haiku relevance scoring (1–10, threshold 7) + cross-outlet
+      same-event dedup, batched per vertical
+- [x] Supabase storage, budget-guarded Perigon calls, Next.js UI + JSON API
+- [x] Railway deploy + HubSpot iframe/CORS support
+- [x] Daily GitHub Actions refresh (`.github/workflows/daily-refresh.yml`)
+- [ ] Legal sign-off on public display rights — see "Legal" below. **Don't
+      treat the live Railway URL as cleared for embedding on ngen.ca yet.**
+
+## How the pipeline works
+
+Each vertical runs through the same sequence (`lib/run-fetch.ts`):
+
+1. **Fetch** — one Perigon search per vertical, last 72 hours, up to 100
+   results ranked by Perigon's own relevance score (`lib/perigon.ts`).
+2. **Geo scope** — the query itself requires a Canada or allied-country
+   mention (US, NATO, Germany, UK) via `lib/query-builder.ts` +
+   `lib/geo-terms.ts`. Deliberately a content clause, not Perigon's `country`
+   param — that param tags the *publishing outlet's* country and live-tested
+   at ~2 near-useless results (mostly wire mirrors), which would also drop
+   US/global trade press covering Canadian manufacturers.
+3. **Wire-syndication collapse** — `showReprints=false` collapses one CP/
+   Postmedia story running near-identically across a dozen regional-paper
+   domains down to one canonical copy.
+4. **Relevance scoring + same-event dedup** — `lib/enrich-articles.ts` batches
+   the vertical's surviving articles into a single Claude Haiku call, scoring
+   each 1–10 against the vertical's own description and flagging when
+   *different* outlets independently cover the same real-world event (e.g. 5
+   papers on one government contract announcement). `lib/select-winners.ts`
+   drops anything below the vertical's `relevanceThreshold` (7) and keeps only
+   the best-scored article per event group.
+5. **Store** — `lib/store-articles.ts` upserts winners into `news_articles`
+   (unique on `url, vertical` — the same article can legitimately belong to
+   more than one vertical, e.g. a defence/semiconductor crossover story).
+6. **Tier for display** — `lib/relevance-tier.ts` computes a cheap keyword
+   heuristic (1 = Canada in the headline, 2 = Canada mentioned in the body,
+   3 = allied-country coverage with no Canada mention) so the UI can sort
+   Canada-primary stories first without waiting on a second AI pass.
+
+## Daily automation
+
+`.github/workflows/daily-refresh.yml` runs `scripts/daily-refresh.ts` once a
+day (`11:00 UTC` by default — adjust the cron expression in the workflow file
+or GitHub's UI). It wipes `news_articles` and refetches all 5 verticals fresh,
+so the feed always reflects the current 72-hour lookback rather than
+accumulating stale rows indefinitely. Also runnable on demand from the
+Actions tab (`workflow_dispatch`), or locally via `npm run refresh`.
+
+**Requires 4 repository secrets** (Settings → Secrets and variables →
+Actions): `PERIGON_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+`ANTHROPIC_API_KEY` — same values as `.env.local`.
+
+**Budget note:** 5 requests/day × 30 days = 150/month exactly. On a 31-day
+month, the last day's run will hit the cap partway through and
+`lib/request-log.ts`'s guardrail blocks the overage outright (that vertical's
+refresh just fails for that one day, logged, not silently over spent) —
+self-corrects the next month. `scripts/daily-refresh.ts` catches per-vertical
+failures so one blocked vertical doesn't stop the others from attempting.
 
 ## Folder structure
 
@@ -31,167 +80,127 @@ config/clusters/        One file per vertical, typed against lib/types.ts.
                          Tune terms here without touching pipeline code.
 lib/
   types.ts               NewsCluster, Perigon response shapes, NewsArticleRow.
+  geo-terms.ts            Canada + allied-country term lists, shared by the
+                           query builder and the display-tier heuristic.
   query-builder.ts        Cluster -> Perigon `q` boolean string.
   perigon.ts              fetchArticlesForCluster() — the actual API call,
-                           budget-gated, logged, filters out market-research-
-                           report spam via excludeLabel (see "Findings" below).
+                           budget-gated, logged, excludeLabel spam filter,
+                           showReprints=false.
   request-log.ts          Budget guardrail: checks + logs against
                            perigon_request_log before every call.
-  store-articles.ts       Upserts fetched articles into news_articles.
+  enrich-articles.ts       Claude Haiku batch call: relevance score + same-
+                           event duplicate_group per article.
+  select-winners.ts        Applies the relevance threshold, picks one winner
+                           per duplicate_group.
+  relevance-tier.ts        Cheap keyword heuristic for Canada-primary vs.
+                           Canada-mentioned vs. allied-only display ordering.
+  store-articles.ts        Upserts scored, deduped articles into news_articles.
+  clear-articles.ts        Wipes news_articles (used by the daily refresh).
   get-articles.ts          Reads news_articles for the UI / API route.
+  run-fetch.ts             The shared fetch -> enrich -> select -> store
+                           sequence every vertical's script calls.
   supabase.ts              Server-side Supabase client (service role key —
-                           never exposed to the browser; all queries run in
-                           Server Components / Route Handlers).
+                           never exposed to the browser).
 scripts/
-  fetch-additive-manufacturing.ts   One runner per live vertical. Fetches,
-  fetch-robotics-automation.ts      logs, and stores.
+  fetch-*.ts               One runner per vertical, calls run-fetch.
+  daily-refresh.ts          Clears + refetches all 5 verticals; what the
+                           GitHub Actions workflow runs.
 app/
   page.tsx                Newsroom feed UI — server-rendered, filterable by
-                           vertical via ?vertical= query param.
+                           vertical via ?vertical= query param, sorted by
+                           Canada tier then recency.
   api/articles/route.ts   Public JSON feed (for a HubSpot custom module).
   api/health/route.ts     Railway healthcheck target.
-components/                NewsHeader, VerticalTabs, ArticleCard, SentimentBadge.
+components/                NewsHeader, VerticalTabs, ArticleCard.
 supabase/migrations/
-  0001_news_articles.sql   news_articles + perigon_request_log tables.
+  0001  news_articles + perigon_request_log tables.
+  0002  (url, vertical) composite unique constraint, replacing url-only.
+  0003  image_url column.
+  0004  canada_tier column + index.
 ```
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in PERIGON_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+cp .env.example .env.local   # fill in PERIGON_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
 ```
 
-Run the migration against your Supabase project (SQL editor, or the
-Supabase CLI if you're using it elsewhere), then:
+Run all 4 migrations against your Supabase project, in order (SQL editor, or
+the Supabase CLI), then:
 
 ```bash
-npm run fetch:additive
+npm run refresh          # clears + refetches all 5 verticals, once
+npm run fetch:defence    # or just one vertical
+npm run dev               # UI at localhost:3000
 ```
-
-This prints the compiled query, then the raw Perigon response for the last
-~26 hours, and logs the request to `perigon_request_log` either way (success
-or failure) so the budget counter stays accurate.
-
-## Things to verify on the first live run
-
-Perigon's docs site wouldn't render for automated fetching while this was
-drafted, so `lib/perigon.ts` and `lib/types.ts` (`PerigonArticle`) are built
-from prior knowledge of the API rather than a freshly-pulled reference page.
-Before trusting the output:
-
-- Confirm the `q` boolean syntax (`AND`/`OR`/`NOT`, quoted phrases,
-  parentheses) is actually being parsed as intended — check
-  `numResults` against a couple of terms removed/added manually.
-- Confirm param names (`from`, `to`, `sortBy`, `size`, `language`) match what
-  your API key's response actually respects.
-- Confirm article field names, especially `sentiment` and whether the field
-  is `description` vs `summary` — adjust `PerigonArticle` in `lib/types.ts`
-  to match what you actually get back.
-
-## Needs your review (flagged terms)
-
-Each cluster config has a `flaggedTerms` array with terms I wasn't fully
-confident about — reasons inline. Summary:
-
-- **Additive Manufacturing** — considered "digital manufacturing" as a
-  secondary term, left out as too broad.
-- **Robotics & Automation** — "smart factory" kept as secondary but
-  buzzwordy; "robotic process automation" deliberately excluded (software
-  bots, not physical robotics).
-- **Advanced Materials** — "critical materials" kept as secondary but
-  overlaps with mining/trade-policy noise; couldn't make "academic research
-  only" work as a keyword exclusion, punted to the LLM relevance pass.
-- **Defence Manufacturing** — conflict-news terms (battlefield, ceasefire,
-  troop deployment) deliberately *not* excluded, since real supply-chain
-  stories share that vocabulary — relying on the relevance pass instead.
-- **Semiconductors & Electronics** — "chip shortage" may be a dated signal
-  by now; "CHIPS Act" is US-policy-specific and will skew results.
-
-None of the geographic bias (`preferredCountries`) is applied as a hard
-Perigon filter — it's carried on the cluster object for later use in
-relevance scoring / display ranking, per the "don't hard-exclude global
-coverage" constraint.
-
-## Budget guardrail
-
-Every call to `fetchArticlesForCluster()` checks `perigon_request_log` for
-the current calendar month and throws before making the request if the
-count is already at 150. Failed requests are logged too, so a bad call still
-counts against the budget the same way a real one would (matches how
-Perigon's own metering works).
-
-## Findings from live runs
-
-- **Market-research-report spam**: on the first live Robotics pull, the top 2
-  of 5 results by score were keyword-stuffed market-forecast mills
-  (`openpr.com`, `indexbox.io`) — not real news, just SEO content ranking
-  artificially high because it mentions every query term. Perigon tags these
-  itself with `labels: [{"name": "Roundup"}]` (and generic listicle/blog
-  content as `"Non-news"`), so `lib/perigon.ts` now sends
-  `excludeLabel=Roundup,Non-news` on every request. This roughly halved raw
-  result counts and applies to all verticals, not just Robotics.
-- **Additive Manufacturing false positive**: a local crime story about
-  3D-printed gun modification parts matched on "3D printed parts." Added
-  firearm/crime exclusion terms — see `flaggedTerms` in that cluster config
-  for the caveat (untested against a large sample; could over-exclude
-  legitimate defence-adjacent AM coverage).
 
 ## UI
 
 `app/page.tsx` is a server-rendered feed: NGen-branded header, vertical
-filter tabs (`All` + each cluster), article cards (title linking out to the
-source, source domain + date, Perigon's own summary, a sentiment badge when
-one sentiment is clearly dominant). Design tokens (NGen copper/indigo/ocean
-palette, Inter, card shadows) are copied from `ngen-trade-intel`'s
-`tailwind.config.ts`/`globals.css` so it matches your other tools rather than
-introducing a new look.
+filter tabs, article cards (thumbnail — real or an on-brand color-block
+fallback when Perigon didn't return an image — title linking out to the
+source, source domain + date, summary, a "Canada mention"/"Allied coverage"
+badge when the story isn't Canada-primary). Design tokens (NGen
+copper/indigo/ocean palette, Inter, card shadows) match `ngen-trade-intel`'s
+`tailwind.config.ts`/`globals.css`.
 
-Run locally:
-
-```bash
-npm run dev
-```
+`relevance_score` and `sentiment` are deliberately **not** passed to the
+client-rendered `ArticleCard` — `app/page.tsx` trims each row to only the
+fields actually displayed before handing it to the Client Component, so
+those internal scoring signals never land in the page's hydration payload,
+even though nothing renders them visually.
 
 ## Deploying to Railway
 
 No Dockerfile needed — Railway's Nixpacks builder auto-detects Next.js.
-`railway.json` pins the build/start commands explicitly (the repo also has
-non-Next `scripts/`, so this avoids any ambiguity) and points the healthcheck
-at `/api/health`.
+`railway.json` pins the build/start commands and points the healthcheck at
+`/api/health`.
 
-1. Push this repo to GitHub, connect it in Railway (new project → Deploy from
-   GitHub repo).
-2. In Railway's project settings, add the env vars from `.env.local`:
-   `PERIGON_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. (Skip
-   `ANTHROPIC_API_KEY` until the enrichment step exists.)
-3. Railway sets `PORT` automatically — `next start` already respects it, no
-   extra config needed.
-4. Optionally set `ALLOWED_ORIGIN` (defaults to `*`, since this feed is meant
-   to be public) and `FRAME_ANCESTORS_ORIGINS` (defaults to
-   `*.ngen.ca, *.railway.app, *.hubspot.com, *.hs-sites.com,
-   *.hubspotpagebuilder.com, *.hubspotpreview.com` — covers HubSpot's editor,
-   preview, and published-page domains) if you need a different allow-list.
+1. Connect the GitHub repo in Railway (auto-deploys on every push to `main`).
+2. Env vars: `PERIGON_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+   (`ANTHROPIC_API_KEY` isn't needed here — the Railway app only reads from
+   Supabase, it doesn't run the fetch/enrichment pipeline itself. That's the
+   GitHub Actions workflow's job.)
+3. Railway sets `PORT` automatically — `next start` respects it, no config.
+4. Optionally set `ALLOWED_ORIGIN` (defaults to `*`) and
+   `FRAME_ANCESTORS_ORIGINS` (defaults to `*.ngen.ca, *.railway.app,
+   *.hubspot.com, *.hs-sites.com, *.hubspotpagebuilder.com,
+   *.hubspotpreview.com`) for a different allow-list.
 
 ## Embedding in HubSpot
 
-Two options, both already supported:
-
-**Iframe the page directly** — simplest. `next.config.ts` sends a
+**Iframe the page directly** — `next.config.ts` sends a
 `Content-Security-Policy: frame-ancestors` header (not `X-Frame-Options`,
 which doesn't support multi-origin allow-lists) permitting embedding from the
-HubSpot domains above. Drop an iframe module pointed at your Railway URL onto
-the HubSpot page.
+HubSpot domains above.
 
-**Build a custom HubSpot module** — fetch `GET /api/articles` (optionally
-`?vertical=<id>&limit=<n>`) and render it with HubSpot's own theme/components
-instead of an iframe. CORS is open (`Access-Control-Allow-Origin: *` by
-default) since this feed isn't member-gated. Response shape:
+**Build a custom HubSpot module** — fetch `GET /api/articles`
+(`?vertical=<id>&limit=<n>`), open CORS by default. Response shape:
 `{ "articles": [{ id, vertical, title, url, source, published_at, summary,
-relevance_score, sentiment, created_at }] }`. Note `relevance_score` is
-`null` on every row until the Haiku enrichment pass exists — don't build
-UI that assumes it's populated yet.
+image_url, relevance_score, sentiment, created_at }] }`.
 
-Unlike `ngen-trade-intel` (which is being moved behind JWT + HubSpot member
-gating per its own integration plan), this feed is intentionally public, so
-no auth/middleware layer is needed here.
+Unlike `ngen-trade-intel` (member-gated), this feed is intentionally public —
+no auth/middleware layer.
+
+## Legal
+
+**Not resolved yet — don't launch publicly without checking this.** What's
+displayed: title, source name, publish date, a short (Perigon-generated)
+summary, a hotlinked thumbnail (not re-hosted), and an outbound link. No full
+article text is ever stored or shown. This is the standard "headline +
+snippet + link out" aggregator pattern, but Perigon's public Terms of
+Service explicitly defer redistribution/display rights to "the applicable
+API agreement or license" tied to the specific account and plan — which
+isn't published anywhere public. **Confirm with Perigon (account rep or
+dashboard) or NGen counsel whether the current plan permits public external
+display before this goes on ngen.ca**, not just internal/research use.
+
+## Cluster tuning notes
+
+Each cluster config (`config/clusters/*.ts`) has a `flaggedTerms` array
+documenting low-confidence calls inline — e.g. Defence Manufacturing
+deliberately does *not* exclude conflict-adjacent vocabulary (battlefield,
+ceasefire) since real supply-chain stories share it with war reporting, and
+relies on the Haiku relevance pass instead of keyword exclusion. Read a
+cluster's `flaggedTerms` before assuming its term list is final.
