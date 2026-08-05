@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* Page-wide light-gray background, matching the original Next.js build's
+   bg-surface-0 wrapper - same reasoning as trade-subnav.module: without
+   this, only each module's own inner container is gray, leaving a white
+   margin around/between widgets. */
+body { background: #f9fafb; min-height: 100vh; }
+
+/* Same three Elevate "blank" template fixes as trade-subnav.module: hide the
+   theme's own empty header/footer partials, zero the .dnd-section top
+   padding so this nav sits flush at the very top of the page, and reclaim
+   link color/decoration from the theme's global `a` rule. */
+.hs-elevate-header, .hs-elevate-footer { display: none !important; }
+.dnd-section { padding-top: 0 !important; }
+
+.ngen-nsn-brand, .ngen-nsn-link, a.ngen-nsn-link, .ngen-nsn-back {
+  text-decoration: none !important;
+}
+.ngen-nsn-link { color: rgba(255,255,255,0.7) !important; }
+.ngen-nsn-link:hover, .ngen-nsn-link-active { color: #fff !important; }
+
+.ngen-nsn-nav {
+  font-family: "Inter", system-ui, sans-serif;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: #E94E10;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  width: 100vw !important;
+  max-width: 100vw !important;
+  margin-left: calc(50% - 50vw) !important;
+  margin-right: calc(50% - 50vw) !important;
+}
+.ngen-nsn-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 14px;
+  overflow-x: auto;
+}
+
+.ngen-nsn-back {
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+  color: rgba(255,255,255,0.7) !important; font-weight: 500; font-size: 13px;
+  transition: color 0.15s ease;
+}
+.ngen-nsn-back:hover { color: #fff !important; }
+
+.ngen-nsn-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.ngen-nsn-logo { height: 24px; width: auto; object-fit: contain; }
+.ngen-nsn-title { font-weight: 700; color: #fff; letter-spacing: -0.01em; white-space: nowrap; }
+
+.ngen-nsn-divider { width: 1px; height: 16px; background: rgba(255,255,255,0.25); flex-shrink: 0; }
+
+.ngen-nsn-link {
+  flex-shrink: 0; padding-bottom: 2px; border-bottom: 2px solid transparent;
+  transition: color 0.15s ease; white-space: nowrap;
+}
+.ngen-nsn-link-active { font-weight: 600; border-bottom-color: #41E8DE; }

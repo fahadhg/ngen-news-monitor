@@ -12,10 +12,14 @@
     "fetch:defence": "tsx --env-file=.env.local scripts/fetch-defence-manufacturing.ts",
     "fetch:semiconductors": "tsx --env-file=.env.local scripts/fetch-semiconductors-electronics.ts",
     "fetch:all": "npm run fetch:additive && npm run fetch:robotics && npm run fetch:materials && npm run fetch:defence && npm run fetch:semiconductors",
-    "refresh": "tsx --env-file=.env.local scripts/daily-refresh.ts"
+    "refresh": "tsx --env-file=.env.local scripts/daily-refresh.ts",
+    "refresh:railway": "tsx scripts/daily-refresh.ts",
+    "hubdb:create-table": "node hubspot/scripts/create-hubdb-table.mjs",
+    "hubdb:sync-sandbox": "tsx --env-file=.env.local hubspot/scripts/sync-hubdb-sandbox.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
+    "@hubspot/api-client": "^14.0.1",
     "@supabase/supabase-js": "^2.105.3",
     "clsx": "^2.1.1",
     "next": "^15.1.0",

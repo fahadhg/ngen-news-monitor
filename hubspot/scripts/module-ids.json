@@ -1,0 +1,12 @@
+{
+  "sandbox": {
+    "news-subnav": "218742085406",
+    "news-feed": "218742085412",
+    "news-footer": "218742083683"
+  },
+  "production": {
+    "news-subnav": null,
+    "news-feed": null,
+    "news-footer": null
+  }
+}

@@ -1,0 +1,53 @@
+{#
+  News Monitor sub-nav: Member Portal back-link, logo, vertical filter tabs.
+  Adapted from ngen-trade-intel's trade-subnav.module - same back-link
+  pattern and Elevate theme header/footer removal, EN/FR toggle dropped
+  (this tool has no French requirement).
+
+  Unlike trade-subnav (one module instance per page, active section passed
+  in via an `active_page` field), this project is a single page
+  (/news) with vertical filtering done via a query param + real page
+  navigation, not separate pages per vertical - so the active tab is read
+  directly from the current request's ?vertical= value, not a field.
+#}
+{% set active_vertical = request.query_dict.vertical %}
+
+<nav class="ngen-nsn-nav">
+  <div class="ngen-nsn-inner">
+
+    <a href="https://www.ngen.ca/membership/portal" class="ngen-nsn-back">
+      <span aria-hidden="true">&larr;</span>
+      <span>Member Portal</span>
+    </a>
+
+    <div class="ngen-nsn-divider"></div>
+
+    <a href="/news" class="ngen-nsn-brand">
+      <img src="https://51764260.fs1.hubspotusercontent-na1.net/hubfs/51764260/trade-intel-assets/ngen-logo-white.png" alt="NGen" class="ngen-nsn-logo">
+      <span class="ngen-nsn-title">Manufacturing News</span>
+    </a>
+
+    <div class="ngen-nsn-divider"></div>
+
+    <a href="/news" class="ngen-nsn-link{% if not active_vertical %} ngen-nsn-link-active{% endif %}">All</a>
+    <a href="/news?vertical=additive-manufacturing" class="ngen-nsn-link{% if active_vertical == 'additive-manufacturing' %} ngen-nsn-link-active{% endif %}">Additive Manufacturing</a>
+    <a href="/news?vertical=robotics-automation" class="ngen-nsn-link{% if active_vertical == 'robotics-automation' %} ngen-nsn-link-active{% endif %}">Robotics &amp; Automation</a>
+    <a href="/news?vertical=advanced-materials" class="ngen-nsn-link{% if active_vertical == 'advanced-materials' %} ngen-nsn-link-active{% endif %}">Advanced Materials</a>
+    <a href="/news?vertical=defence-manufacturing" class="ngen-nsn-link{% if active_vertical == 'defence-manufacturing' %} ngen-nsn-link-active{% endif %}">Defence Manufacturing</a>
+    <a href="/news?vertical=semiconductors-electronics" class="ngen-nsn-link{% if active_vertical == 'semiconductors-electronics' %} ngen-nsn-link-active{% endif %}">Semiconductors &amp; Electronics</a>
+  </div>
+</nav>
+
+{#
+  Same synchronous, before-DOMContentLoaded Elevate header/footer removal as
+  trade-subnav.module - runs as soon as the parser reaches this point, since
+  the header is already above it in the document by then.
+#}
+<script>
+(function () {
+  var header = document.querySelector('.hs-elevate-header');
+  if (header && header.parentElement) header.parentElement.remove();
+  var footer = document.querySelector('.hs-elevate-footer');
+  if (footer && footer.parentElement) footer.parentElement.remove();
+})();
+</script>

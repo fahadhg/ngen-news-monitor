@@ -2,6 +2,7 @@ import { clusters } from "../config/clusters";
 import { getSupabaseClient } from "../lib/supabase";
 import { clearArticles } from "../lib/clear-articles";
 import { runFetchForCluster } from "../lib/run-fetch";
+import { syncSandboxHubDb } from "../hubspot/lib/sync-hubdb-sandbox";
 
 // Wipes and refetches every vertical fresh each run, rather than accumulating
 // forever — the feed always reflects fetchArticlesForCluster's rolling
@@ -25,6 +26,15 @@ async function main() {
       // error, etc.) prevent the rest from attempting their own refresh.
       console.error(`Failed to refresh ${cluster.name}:`, err);
     }
+  }
+
+  console.log("\n=== Syncing to sandbox HubDB ===");
+  try {
+    await syncSandboxHubDb();
+  } catch (err) {
+    // Same reasoning as per-vertical errors above — a HubDB sync failure
+    // shouldn't be silent, but Supabase is already refreshed regardless.
+    console.error("Failed to sync sandbox HubDB:", err);
   }
 }
 

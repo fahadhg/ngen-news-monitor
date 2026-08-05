@@ -1,0 +1,130 @@
+{#
+  Article grid for /news, filtered by ?vertical= and paginated by ?page=
+  (real page navigation - a query-param change is a fresh server-side HubL
+  render, not a client-side route). This is the row-ceiling mitigation:
+  HubSpot's live (non-prerendered) render path silently caps total HubDB rows
+  a page can fetch via hubdb_table_rows() at ~20-30 on this Development
+  sandbox tier - confirmed empirically (curl with a real browser User-Agent
+  + x-hs-cfworker-meta: OriginResolver, not a bot-facing PreRenderedContentResolver
+  check) before this module was written, same as ngen-trade-intel's
+  imports-basket-v3.module handles its own year-at-a-time embedding. Current
+  per-vertical article counts (15-50) already exceed that ceiling, so
+  PAGE_SIZE stays conservative and every additional article is a real second
+  page load, never a bigger single embed.
+
+  vertical and page are both read from the URL query string and strictly
+  validated (vertical against a fixed allowlist, page as a positive integer)
+  before being concatenated into the HubDB query string below - never pass a
+  raw querystring value through unvalidated into hubdb_table_rows()'s filter
+  argument, same discipline as imports-basket-v3.module's year validation.
+
+  Table id (386092172) is the sandbox news_articles table, hardcoded here
+  the same way trade-intel's bespoke widget modules hardcode their table
+  ids directly rather than as a configurable field - gets substituted for
+  production's real table id during the Phase 3 promotion, same substitution
+  pattern PRODUCTION-CUTOVER.md documents for portal ids and table ids.
+#}
+{% set PAGE_SIZE = 15 %}
+{% set TABLE_ID = 386092172 %}
+
+{% set vertical_raw = request.query_dict.vertical %}
+{% set valid_verticals = ["additive-manufacturing", "robotics-automation", "advanced-materials", "defence-manufacturing", "semiconductors-electronics"] %}
+{% set vertical = "" %}
+{% if vertical_raw and vertical_raw in valid_verticals %}
+  {% set vertical = vertical_raw %}
+{% endif %}
+
+{% set page_raw = request.query_dict.page %}
+{% set page = 1 %}
+{% if page_raw %}
+  {% set page_int = page_raw|int(0) %}
+  {% if page_int >= 1 %}
+    {% set page = page_int %}
+  {% endif %}
+{% endif %}
+{% set offset = (page - 1) * PAGE_SIZE %}
+
+{% set query = "orderBy=-published_at&limit=" ~ PAGE_SIZE ~ "&offset=" ~ offset %}
+{% if vertical %}
+  {% set query = "vertical=" ~ vertical ~ "&" ~ query %}
+{% endif %}
+{% set rows = hubdb_table_rows(TABLE_ID, query) %}
+
+<main class="ngen-nfeed-main">
+  {% if rows|length == 0 %}
+    <p class="ngen-nfeed-empty">
+      {% if page > 1 %}No more articles for this filter.{% else %}No articles yet for this vertical.{% endif %}
+    </p>
+  {% else %}
+    <div class="ngen-nfeed-grid">
+      {% for r in rows %}
+        {% set v = r.values %}
+        <a href="{{ v.url }}" target="_blank" rel="noopener noreferrer" class="ngen-nfeed-card">
+          <div class="ngen-nfeed-image-wrap">
+            {% if v.image_url %}
+              <img src="{{ v.image_url }}" alt="" loading="lazy" class="ngen-nfeed-image"
+                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            {% endif %}
+            <div class="ngen-nfeed-fallback ngen-nfeed-fallback-{{ v.vertical }}" {% if v.image_url %}style="display:none;"{% endif %}>
+              <span>
+                {% if v.vertical == "additive-manufacturing" %}Additive Manufacturing
+                {% elif v.vertical == "robotics-automation" %}Robotics &amp; Automation
+                {% elif v.vertical == "advanced-materials" %}Advanced Materials
+                {% elif v.vertical == "defence-manufacturing" %}Defence Manufacturing
+                {% elif v.vertical == "semiconductors-electronics" %}Semiconductors &amp; Electronics
+                {% else %}NGen Manufacturing News
+                {% endif %}
+              </span>
+            </div>
+          </div>
+
+          <div class="ngen-nfeed-meta">
+            {% if not vertical %}
+              <span class="ngen-nfeed-vertical-label">
+                {% if v.vertical == "additive-manufacturing" %}Additive Manufacturing
+                {% elif v.vertical == "robotics-automation" %}Robotics &amp; Automation
+                {% elif v.vertical == "advanced-materials" %}Advanced Materials
+                {% elif v.vertical == "defence-manufacturing" %}Defence Manufacturing
+                {% elif v.vertical == "semiconductors-electronics" %}Semiconductors &amp; Electronics
+                {% else %}{{ v.vertical }}
+                {% endif %}
+              </span>
+              <span>&middot;</span>
+            {% endif %}
+            <span>{{ v.source }}</span>
+            <span>&middot;</span>
+            {#
+              No proven HubL date-formatting filter in this codebase to copy
+              (the reference project does all its date formatting client-side
+              in React, never in HubL) - formatted client-side in module.js
+              instead of guessing an unverified filter name/syntax.
+            #}
+            <span class="ngen-nfeed-date" data-ts="{{ v.published_at }}"></span>
+          </div>
+
+          <h3 class="ngen-nfeed-title">{{ v.title }}</h3>
+
+          {% if v.summary %}
+            <p class="ngen-nfeed-summary">{{ v.summary }}</p>
+          {% endif %}
+
+          {% if v.canada_tier == 2 or v.canada_tier == 3 %}
+            <div class="ngen-nfeed-tier-badge">
+              {% if v.canada_tier == 2 %}Canada mention{% else %}Allied coverage{% endif %}
+            </div>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+
+    <div class="ngen-nfeed-pagination">
+      {% if page > 1 %}
+        <a href="/news?{% if vertical %}vertical={{ vertical }}&{% endif %}page={{ page - 1 }}" class="ngen-nfeed-page-link">&larr; Previous</a>
+      {% endif %}
+      <span class="ngen-nfeed-page-number">Page {{ page }}</span>
+      {% if rows|length == PAGE_SIZE %}
+        <a href="/news?{% if vertical %}vertical={{ vertical }}&{% endif %}page={{ page + 1 }}" class="ngen-nfeed-page-link">Next &rarr;</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</main>
