@@ -58,7 +58,17 @@
   {% else %}
     <div class="ngen-nfeed-grid">
       {% for r in rows %}
-        {% set v = r.values %}
+        {#
+          Row fields are direct properties of r in HubL (r.title, r.url, ...)
+          - NOT nested under r.values the way the REST API's JSON shape is.
+          Confirmed against ngen-trade-intel's imports-basket-v3.module,
+          which reads r.chunk_data directly, not r.values.chunk_data. The
+          r.values assumption here (copied from the REST API shape without
+          checking) silently rendered every field as empty - Jinja/HubL
+          renders undefined access as "" rather than erroring, so nothing
+          caught this until real rendered output was inspected.
+        #}
+        {% set v = r %}
         <a href="{{ v.url }}" target="_blank" rel="noopener noreferrer" class="ngen-nfeed-card">
           <div class="ngen-nfeed-image-wrap">
             {% if v.image_url %}
