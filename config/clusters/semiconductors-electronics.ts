@@ -23,6 +23,7 @@ export const semiconductorsElectronics: NewsCluster = {
     "semiconductor materials",
     "PCB manufacturing",
     "microelectronics manufacturing",
+    "POET Technologies",
   ],
   exclusionTerms: [
     "smartphone review",
@@ -42,6 +43,11 @@ export const semiconductorsElectronics: NewsCluster = {
       term: "CHIPS Act",
       reason:
         "US-specific policy term. Strong signal for supply-chain/investment stories but will skew results toward US policy news over Canadian semiconductor manufacturing. Kept as secondary since it's still a reliable anchor for real fab-investment coverage.",
+    },
+    {
+      term: "POET Technologies",
+      reason:
+        "This vertical was surfacing zero genuinely-Canadian (canada_tier 1/2) stories, and POET (Toronto-based semiconductor photonics) is the main real anchor available — but ~114 of ~114 recent mentions checked live were stock-ticker/earnings-analysis spam ('Trading Up 8% – Here's Why', 'Time to Buy?'), and Perigon's excludeLabel:Non-news filter didn't catch most of them (empty labels array). Added anyway, deliberately accepting the noisier candidate pool, on the reasoning that the relevance-scoring pass against this cluster's description should reject stock-analysis content even where the label filter doesn't. Revisit if Haiku's threshold-7 filter isn't actually rejecting these — check the ratio of POET stock-spam vs real POET manufacturing stories in stored output after a few days.",
     },
   ],
 };
