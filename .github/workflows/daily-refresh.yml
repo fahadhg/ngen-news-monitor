@@ -27,3 +27,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # daily-refresh.ts's final step syncs Supabase's winners into the
+          # sandbox HubDB table (hubspot/lib/sync-hubdb-sandbox.ts). Without
+          # this secret, getSandboxToken() falls back to a local dotfile that
+          # doesn't exist on the runner, so the sync step throws, gets
+          # swallowed by daily-refresh.ts's try/catch, and HubDB silently
+          # never updates — Supabase looked fresh, HubSpot didn't.
+          HUBSPOT_SANDBOX_TOKEN: ${{ secrets.HUBSPOT_SANDBOX_PRIVATE_APP_TOKEN }}

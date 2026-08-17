@@ -21,6 +21,33 @@ export const CANADA_TERMS = [
   "Winnipeg",
   "Edmonton",
   "NGen",
+  // Added to widen Canadian recall — the original city list skipped several
+  // manufacturing/shipbuilding hubs that generate real vertical-relevant
+  // stories (auto assembly, steel, shipbuilding) without necessarily also
+  // naming a province. Ambiguous bare names quoted with a disambiguating
+  // suffix, same reasoning as ALLIED_TERMS leaving out bare "UK" for the
+  // Ukraine collision.
+  "Hamilton, Ontario",
+  "Windsor, Ontario",
+  "Kitchener-Waterloo",
+  "Oshawa",
+  "Brampton",
+  "Sarnia",
+  "Sault Ste. Marie",
+  "Halifax",
+  "Saint John, New Brunswick",
+  "St. John's, Newfoundland",
+  "Regina",
+  "Saskatoon",
+  "Surrey, B.C.",
+  // Federal program/agency names that show up in manufacturing investment
+  // and procurement coverage even when the article never says "Canada"
+  // in the headline or summary.
+  "Innovation, Science and Economic Development Canada",
+  "Business Development Bank of Canada",
+  "Export Development Canada",
+  "Strategic Innovation Fund",
+  "Next Generation Manufacturing Canada",
 ];
 
 // Manufacturing/trade/defence-industrial news from Canada's largest trading

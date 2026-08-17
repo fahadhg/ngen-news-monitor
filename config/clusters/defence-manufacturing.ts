@@ -22,6 +22,13 @@ export const defenceManufacturing: NewsCluster = {
     "military equipment production",
     "defence contractor Canada",
     "dual-use manufacturing",
+    // Named Canadian shipbuilders/primes — a story naming "Irving Shipbuilding"
+    // is Canadian defence-manufacturing coverage even when it never says
+    // "Canada" or "shipbuilding contract" outright.
+    "Irving Shipbuilding",
+    "Seaspan",
+    "Davie Shipbuilding",
+    "National Shipbuilding Strategy",
   ],
   exclusionTerms: ["video game", "toy soldier"],
   preferredCountries: ["ca", "us"],

@@ -44,7 +44,16 @@
 {% endif %}
 {% set offset = (page - 1) * PAGE_SIZE %}
 
-{% set query = "orderBy=-published_at&limit=" ~ PAGE_SIZE ~ "&offset=" ~ offset %}
+{#
+  orderBy=canada_tier first, then -published_at as tiebreaker within a tier -
+  HubL supports repeated orderBy params, applied in the order given (unlike
+  hubdb_table_rows in the original Next.js/Supabase build, which used two
+  .order() calls the same way - see lib/get-articles.ts). Without the
+  canada_tier sort, this page fell back to pure recency, so the higher-volume
+  allied-only (tier 3) coverage crowded genuinely Canadian (tier 1/2) stories
+  off page 1 whenever both existed for a vertical.
+#}
+{% set query = "orderBy=canada_tier&orderBy=-published_at&limit=" ~ PAGE_SIZE ~ "&offset=" ~ offset %}
 {% if vertical %}
   {% set query = "vertical=" ~ vertical ~ "&" ~ query %}
 {% endif %}
