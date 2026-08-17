@@ -14,13 +14,13 @@ export const defenceManufacturing: NewsCluster = {
     "munitions manufacturing",
     "defence industrial base",
     "aerospace defence contract",
-    "defence procurement Canada",
+    "defence procurement",
   ],
   secondaryTerms: [
     "NATO industrial capacity",
     "defence innovation",
     "military equipment production",
-    "defence contractor Canada",
+    "defence contractor",
     "dual-use manufacturing",
     // Named Canadian shipbuilders/primes — a story naming "Irving Shipbuilding"
     // is Canadian defence-manufacturing coverage even when it never says
@@ -29,6 +29,16 @@ export const defenceManufacturing: NewsCluster = {
     "Seaspan",
     "Davie Shipbuilding",
     "National Shipbuilding Strategy",
+    // Generic defence-spending/contracting language real articles actually use
+    // ("Canada's defence spending boom", "Arctic defence buildout") — the
+    // original list only had compound manufacturing-specific phrases and
+    // missed plain procurement/spending coverage entirely. Broader, but the
+    // geo clause + Haiku relevance pass (against this cluster's description)
+    // still do the real precision filtering, same as every other term here.
+    "defence spending",
+    "defence budget",
+    "defence contract",
+    "Arctic defence",
   ],
   exclusionTerms: ["video game", "toy soldier"],
   preferredCountries: ["ca", "us"],

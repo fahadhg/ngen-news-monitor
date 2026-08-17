@@ -2,21 +2,37 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 const MONTHLY_REQUEST_CAP = 150;
 
-function startOfCurrentMonthIso(): string {
+// Perigon's actual billing cycle resets on the 16th of each month (confirmed
+// from the account dashboard: "17 of 150 requests... resets on Sep 16"), NOT
+// the 1st of the calendar month. The previous calendar-month version of this
+// function caused a real incident: it kept counting requests from a cycle
+// that had already reset on Aug 16, so by Aug 17 it wrongly believed the
+// (already-reset, nearly-empty) new cycle was at 150/150 and blocked a
+// refetch after clearArticles() had already wiped the table — see git log
+// around 2026-08-17 for the recovery. Trusting Perigon's own rejection
+// (HTTP 4xx) instead of reimplementing quota accounting was considered, but
+// this project has no live traffic pattern to confirm what Perigon actually
+// returns at the real cap, so the anchored-date guardrail stays as a
+// best-effort backstop — just aligned to the real reset date now.
+function startOfCurrentBillingCycleIso(): string {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const day = now.getUTCDate();
+  const cycleMonth = day >= 16 ? month : month - 1;
+  return new Date(Date.UTC(year, cycleMonth, 16)).toISOString();
 }
 
 /**
- * Throws if this month's Perigon request count is already at the free-tier cap.
- * Call this BEFORE making a request, not after — the whole point is to never
- * place the call that would tip us over 150/month.
+ * Throws if this billing cycle's Perigon request count is already at the
+ * plan cap. Call this BEFORE making a request, not after — the whole point
+ * is to never place the call that would tip us over 150/cycle.
  */
 export async function assertBudgetAvailable(supabase: SupabaseClient): Promise<void> {
   const { count, error } = await supabase
     .from("perigon_request_log")
     .select("id", { count: "exact", head: true })
-    .gte("created_at", startOfCurrentMonthIso());
+    .gte("created_at", startOfCurrentBillingCycleIso());
 
   if (error) {
     throw new Error(`Could not check Perigon request budget: ${error.message}`);
